@@ -1,0 +1,12 @@
+const express = require('express');
+const { registerUser, loginUser } = require('../controllers/authController');
+const { viewUserDetails,forgetPin } = require('../controllers/userController');
+const { forgetPassword } = require('../controllers/passwordController');
+const authMiddleware = require('../middleware/authMiddleware'); 
+const router = express.Router();
+router.post('/register', registerUser);
+router.post('/login', loginUser);
+router.post('/forget-password', authMiddleware, forgetPassword);
+router.post('/forget-pin', authMiddleware, forgetPin);
+router.get('/details', authMiddleware, viewUserDetails);
+module.exports = router;
