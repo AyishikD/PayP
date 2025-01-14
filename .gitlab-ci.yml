@@ -1,0 +1,21 @@
+image: node:16
+
+stages:
+  - install
+  - deploy
+
+# Install Dependencies
+install:
+  stage: install
+  script:
+    - npm install
+  only:
+    - main  # Trigger this pipeline on changes to the 'main' branch
+
+# Deploy your app
+deploy:
+  stage: deploy
+  script:
+    - node server.js  # Replace with the command to start your API
+  only:
+    - main  # Trigger this pipeline on changes to the 'main' branch
