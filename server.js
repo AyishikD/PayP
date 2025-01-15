@@ -2,10 +2,10 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const sequelize = require('../config/db'); // Ensure correct path
-const authRoutes = require('../routes/authRoutes');
-const paymentRoutes = require('../routes/paymentRoutes');
-const { logger } = require('../utils/logger');
+const sequelize = require('./config/db'); // Ensure correct path
+const authRoutes = require('./routes/authRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const { logger } = require('./utils/logger');
 
 const app = express();
 const port = 3000;

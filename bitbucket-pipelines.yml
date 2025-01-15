@@ -1,0 +1,13 @@
+image: node:16
+
+pipelines:
+  default:
+    - step:
+        name: Install and Deploy
+        caches:
+          - node
+        script:
+          - echo "Installing dependencies..."
+          - npm install
+          - echo "Starting the server..."
+          - node server.js
