@@ -1,7 +1,7 @@
 # **PayP: Payment Platform API**
 
 This project is a payment architecture based on UPI architecture, designed to accept payments and send them. It includes core features such as secure user accounts, balance management, transaction logs, and a lockout mechanism for failed login attempts.It provides a great alternative to Razorpay or Stripe for development since it completely works like UPI.
-
+Here is the complete API Endpoint testing: [Postman Results][https://www.postman.com/mission-geologist-4118891/payp/collection/za1hjme/routes-payp]
 ---
 
 ## **Features**
@@ -64,29 +64,17 @@ node server.js
 - **JWT**: Secure user authentication.
 
 ### **Scripts**
-- `npm start`: Starts the server.
-- `npm test`: Runs test cases (if implemented).
-- `npm run lint`: Lint checks for the project.
+- `node server.js`: Starts the server.
 
 ---
 
 ## **Deployment**
-1. **GitHub**: Push the repository to GitHub.
-2. **Heroku** / **Render**: Suitable alternatives for deployment.
-3. **Environment Variables**: Set up variables in the respective platform configuration.
-
----
-
-## **Security Recommendations**
-- Enable HTTPS for secure communication.
-- Regularly update environment secrets.
-- Implement rate limiting for API endpoints.
+Not Deployed
 
 ---
 
 ## **License**
-This project is licensed under the MIT License. 
+This project is licensed under the Apache 2.0 License. 
 
 ---
-
-Feel free to modify this README to better suit your specific project needs!
+Contributions are most welcome
