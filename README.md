@@ -68,7 +68,7 @@ node server.js
 ---
 
 ## **Deployment**
-Not Deployed
+Deployed on render
 
 ---
 
