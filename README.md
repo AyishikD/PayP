@@ -1,1 +1,92 @@
-# PayP
+# **PayP: Payment Platform API**
+
+This project is a payment architecture based on UPI architecture, designed to accept payments and send them. It includes core features such as secure user accounts, balance management, transaction logs, and a lockout mechanism for failed login attempts.It provides a great alternative to Razorpay or Stripe for development since it completely works like UPI.
+
+---
+
+## **Features**
+1. **User Management**: 
+   - User registration, login, and secure payment PIN setup.
+   - Password reset with account lockout after 5 failed attempts.
+   - Pin reset and account lockout after 5 failed attempts.
+
+2. **Payment Transactions**:
+   - Dynamic balance management.
+   - Viewable transaction history.
+   - Tranfer and receive payment.
+
+3. **Security**:
+   - JWT-based user authentication.
+   - Password hashing with bcrypt.
+   - 30 mins lockout mechanism for security.
+
+4. **Database**:
+   - PostgreSQL used using Supabase configured using Sequelize ORM.
+
+---
+
+## **Installation**
+### **1. Clone the repository**
+```bash
+git clone https://github.com/AyishikD/PayP
+cd PayP
+```
+
+### **2. Install dependencies**
+```bash
+npm install
+```
+
+### **3. Set up environment variables**
+Create a `.env` file in the project root and configure the following:
+```env
+DB_URL=your_postgresql_database_url
+JWT_SECRET=your_jwt_secret
+```
+
+### **4. Run the project**
+#### **Development**
+```bash
+npm start
+```
+#### **Production**
+```bash
+node server.js
+```
+
+---
+
+## **Development Notes**
+### **Dependencies**
+- **Express**: Web framework for Node.js.
+- **Sequelize**: ORM for PostgreSQL.
+- **bcrypt**: Password hashing.
+- **JWT**: Secure user authentication.
+
+### **Scripts**
+- `npm start`: Starts the server.
+- `npm test`: Runs test cases (if implemented).
+- `npm run lint`: Lint checks for the project.
+
+---
+
+## **Deployment**
+1. **GitHub**: Push the repository to GitHub.
+2. **Heroku** / **Render**: Suitable alternatives for deployment.
+3. **Environment Variables**: Set up variables in the respective platform configuration.
+
+---
+
+## **Security Recommendations**
+- Enable HTTPS for secure communication.
+- Regularly update environment secrets.
+- Implement rate limiting for API endpoints.
+
+---
+
+## **License**
+This project is licensed under the MIT License. 
+
+---
+
+Feel free to modify this README to better suit your specific project needs!
