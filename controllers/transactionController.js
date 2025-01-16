@@ -1,10 +1,18 @@
 const { Op } = require('sequelize');
 const Transaction = require('../models/transactionModel');
 
-// Fetch transaction logs for a particular user
-async function getTransactionLogs(req, res) {
+// In-memory queue
+const transactionLogsQueue = [];
+let isProcessingTransactionLogs = false;
+
+// Helper function to process the transaction logs queue
+async function processTransactionLogsQueue() {
+  if (isProcessingTransactionLogs || transactionLogsQueue.length === 0) return;
+
+  isProcessingTransactionLogs = true;
+  const { req, res } = transactionLogsQueue.shift(); // Get the first request in the queue
+
   try {
-    // Convert userId to an integer
     const userId = parseInt(req.params.userId, 10);
 
     if (isNaN(userId)) {
@@ -26,7 +34,16 @@ async function getTransactionLogs(req, res) {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error while fetching transactions' });
+  } finally {
+    isProcessingTransactionLogs = false;
+    processTransactionLogsQueue(); // Process the next request in the queue
   }
+}
+
+// Fetch transaction logs
+async function getTransactionLogs(req, res) {
+  transactionLogsQueue.push({ req, res }); // Add the request to the queue
+  processTransactionLogsQueue(); // Start processing the queue
 }
 
 module.exports = {

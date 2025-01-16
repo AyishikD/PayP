@@ -1,11 +1,10 @@
 {
   "name": "payp",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
@@ -13,11 +12,15 @@
   "dependencies": {
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
+    "bull": "^4.16.5",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-validator": "^7.2.1",
+    "ioredis": "^5.4.2",
     "jsonwebtoken": "^9.0.2",
+    "opossum": "^8.4.0",
+    "p-retry": "^6.2.1",
     "pg": "^8.13.1",
     "pg-hstore": "^2.3.4",
     "qrcode": "^1.5.4",
