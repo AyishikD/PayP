@@ -1,17 +1,16 @@
+const { check, validationResult } = require('express-validator');
 const CircuitBreaker = require('opossum');
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const verifyPaymentPin = require('../utils/verifyPaymentPin'); 
 
-// Define Circuit Breaker options
+// Circuit Breaker configuration remains unchanged
 const breakerOptions = {
   timeout: 5000, // Timeout after 5 seconds
   errorThresholdPercentage: 50, // Open circuit if 50% of requests fail
   resetTimeout: 10000, // Reset after 10 seconds
 };
 
-// Circuit Breaker for login
 const breaker = new CircuitBreaker(async (req) => {
   return await loginUserLogic(req);
 }, breakerOptions);
@@ -31,26 +30,45 @@ async function processAuthQueue() {
   if (isProcessingAuth || authRequestQueue.length === 0) return;
 
   isProcessingAuth = true;
-  const { req, res, handler } = authRequestQueue.shift(); // Get the first request in the queue
+  const { req, res, handler } = authRequestQueue.shift();
 
   try {
-    await handler(req, res); // Process the handler function (register or login)
+    await handler(req, res);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
   } finally {
     isProcessingAuth = false;
-    processAuthQueue(); // Process the next request in the queue
+    processAuthQueue();
   }
 }
 
-// Register User
-async function registerUserHandler(req, res) {
-  const { name, email, password, paymentPin } = req.body;
+// Middleware to validate registration input
+const validateRegistration = [
+  check('name').notEmpty().withMessage('Name is required.'),
+  check('email').isEmail().withMessage('Invalid email address.'),
+  check('password')
+    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long.')
+    .matches(/\d/).withMessage('Password must contain at least one number.'),
+  check('paymentPin')
+    .isNumeric().withMessage('Payment Pin must be numeric.')
+    .isLength({ min: 5, max: 5 }).withMessage('Payment Pin must be exactly 5 digits.'),
+];
 
-  if (!name || !email || !password || !paymentPin) {
-    return res.status(400).json({ message: 'All fields are required.' });
+// Middleware to validate login input
+const validateLogin = [
+  check('email').isEmail().withMessage('Invalid email address.'),
+  check('password').notEmpty().withMessage('Password is required.'),
+];
+
+// Register User Handler
+async function registerUserHandler(req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
   }
+
+  const { name, email, password, paymentPin } = req.body;
 
   const userExists = await User.findOne({ where: { email } });
   if (userExists) {
@@ -58,12 +76,13 @@ async function registerUserHandler(req, res) {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPaymentPin = await bcrypt.hash(paymentPin, 10);
 
   const user = await User.create({
     name,
     email,
     password: hashedPassword,
-    paymentPin,
+    paymentPin: hashedPaymentPin,
   });
 
   const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);
@@ -76,8 +95,13 @@ async function registerUser(req, res) {
   processAuthQueue();
 }
 
-// Login User
+// Login User Handler
 async function loginUserHandler(req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const { email, password } = req.body;
 
   const user = await User.findOne({ where: { email } });
@@ -94,7 +118,6 @@ async function loginUserHandler(req, res) {
         message: `Account is locked. Try again after ${Math.ceil(lockoutRemainingTime / 60000)} minutes.`,
       });
     } else {
-      // Lockout expired
       user.isLocked = false;
       user.failedLoginAttempts = 0;
       user.lockoutExpiresAt = null;
@@ -104,7 +127,6 @@ async function loginUserHandler(req, res) {
 
   const isPasswordCorrect = await bcrypt.compare(password, user.password);
   if (!isPasswordCorrect) {
-    // Increment failed login attempts
     user.failedLoginAttempts += 1;
 
     if (user.failedLoginAttempts > 5) {
@@ -121,7 +143,6 @@ async function loginUserHandler(req, res) {
     return res.status(400).json({ message: 'Invalid credentials.' });
   }
 
-  // Reset failed attempts
   user.failedLoginAttempts = 0;
   await user.save();
 
@@ -135,6 +156,6 @@ async function loginUser(req, res) {
 }
 
 module.exports = {
-  registerUser,
-  loginUser,
+  registerUser: [...validateRegistration, registerUser],
+  loginUser: [...validateLogin, loginUser],
 };
