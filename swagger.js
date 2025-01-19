@@ -14,7 +14,8 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'https://payp-swagger.onrender.com/api', // Update with your Render deployment URL
+        //url: 'https://payp-swagger.onrender.com/api', // Update with your Render deployment URL
+        url:'https://payp.onrender.com/api'
       },
     ],
   },
