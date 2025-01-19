@@ -76,13 +76,15 @@ async function registerUserHandler(req, res) {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-  const hashedPaymentPin = await bcrypt.hash(paymentPin, 10);
+ /* const hashedPaymentPin = await bcrypt.hash(paymentPin, 5);
+  //console.log(hashedPaymentPin);*/
+  
 
   const user = await User.create({
     name,
     email,
     password: hashedPassword,
-    paymentPin: hashedPaymentPin,
+    paymentPin,
   });
 
   const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);

@@ -13,6 +13,11 @@ const rateLimit = require('express-rate-limit');
 const app = express();
 const port = 3000;
 
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocs = require('./swagger');
+
+
+
 // Set up rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,  // 15 minutes
@@ -26,6 +31,9 @@ app.use(limiter);
 
 // Set security headers with Helmet
 app.use(helmet()); // Apply default Helmet security headers
+
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Customize Helmet
 app.use(
