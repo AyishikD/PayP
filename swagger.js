@@ -14,7 +14,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'http://localhost:3000/api', // Update with your Render deployment URL
+        url: 'https://payp-swagger.onrender.com/api', // Update with your Render deployment URL
       },
     ],
   },
