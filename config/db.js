@@ -38,4 +38,4 @@ async function connectWithRetry() {
 
 connectWithRetry(); // Call the retry function to start the connection process
 
-module.exports = sequelize; // Export the sequelize instance for use elsewhere
+module.exports = sequelize;
