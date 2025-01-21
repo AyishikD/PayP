@@ -137,6 +137,6 @@ router.post('/initiate', authMiddleware, initiatePayment);
  *         description: Server error while fetching transactions
  */
 router.get('/logs/:userId', authMiddleware, getTransactionLogs);
-router.post('/pay', processProjectPayment);
+router.post('/projectpay', processProjectPayment);
 
 module.exports = router;
