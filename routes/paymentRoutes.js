@@ -1,6 +1,7 @@
 const express = require('express');
 const { initiatePayment } = require('../controllers/paymentController');
 const { getTransactionLogs } = require('../controllers/transactionController');
+const { processProjectPayment } = require('../controllers/projectController');
 const authMiddleware = require('../middleware/authMiddleware');
 const router = express.Router();
 
@@ -136,5 +137,6 @@ router.post('/initiate', authMiddleware, initiatePayment);
  *         description: Server error while fetching transactions
  */
 router.get('/logs/:userId', authMiddleware, getTransactionLogs);
+router.post('/pay', processProjectPayment);
 
 module.exports = router;
