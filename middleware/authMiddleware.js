@@ -1,4 +1,3 @@
-// middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 
 // Middleware to verify JWT token
@@ -10,7 +9,7 @@ async function authenticate(req, res, next) {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET); // Verify the token
+    const decoded = await jwt.verify(token, process.env.JWT_SECRET); // Verify the token using await for async handling
     req.user = decoded; // Attach decoded user info to the request object
     next(); // Allow the request to proceed to the next middleware or route handler
   } catch (error) {

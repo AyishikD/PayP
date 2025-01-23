@@ -2,9 +2,6 @@ const express = require('express');
 const router = express.Router();
 const sequelize = require('../config/db'); // Import the sequelize instance
 
-
-
-
 /**
  * @swagger
  * /health:
@@ -50,7 +47,7 @@ router.get('/health', async (req, res) => {
     res.status(200).json({
       status: 'UP',
       database: dbStatus ? 'Connected' : 'Disconnected',
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(), // Return timestamp in ISO format
     });
   } catch (error) {
     console.error('Health check error:', error.message);

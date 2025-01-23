@@ -10,7 +10,7 @@ async function processQueue() {
   if (isProcessing || requestQueue.length === 0) return;
 
   isProcessing = true;
-  const { req, res } = requestQueue.shift(); // Remove the first request in the queue
+  const { req, res, next } = requestQueue.shift(); // Remove the first request in the queue
 
   try {
     const { email, newPassword } = req.body;
@@ -25,7 +25,9 @@ async function processQueue() {
       if (user.lockoutExpiresAt && currentTime < user.lockoutExpiresAt) {
         // Account is locked
         const lockoutRemainingTime = user.lockoutExpiresAt - currentTime;
-        return res.status(400).json({ message: `Account is locked. Try again after ${Math.ceil(lockoutRemainingTime / 60000)} minutes.` });
+        return res
+          .status(400)
+          .json({ message: `Account is locked. Try again after ${Math.ceil(lockoutRemainingTime / 60000)} minutes.` });
       } else {
         // Lockout has expired, reset the lockout
         user.isLocked = false;
@@ -46,7 +48,7 @@ async function processQueue() {
     res.status(200).json({ message: 'Password reset successfully' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    next(error); // Pass the error to the Express v5 error handler
   } finally {
     isProcessing = false;
     processQueue(); // Process the next request in the queue
@@ -54,9 +56,9 @@ async function processQueue() {
 }
 
 // Forget Password (Queue Implementation)
-async function forgetPassword(req, res) {
+async function forgetPassword(req, res, next) {
   // Add the request to the queue
-  requestQueue.push({ req, res });
+  requestQueue.push({ req, res, next });
 
   // Process the queue if not already processing
   processQueue();

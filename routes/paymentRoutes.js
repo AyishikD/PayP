@@ -137,6 +137,54 @@ router.post('/initiate', authMiddleware, initiatePayment);
  *         description: Server error while fetching transactions
  */
 router.get('/logs/:userId', authMiddleware, getTransactionLogs);
+
+/**
+ * @swagger
+ * /payment/projectpay:
+ *   post:
+ *     summary: Process a project payment
+ *     tags: [Payments]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               projectId:
+ *                 type: integer
+ *                 description: ID of the project for which payment is being made.
+ *               amount:
+ *                 type: number
+ *                 format: float
+ *                 description: Payment amount for the project.
+ *               paymentPin:
+ *                 type: string
+ *                 description: Payment PIN of the sender.
+ *             required:
+ *               - projectId
+ *               - amount
+ *               - paymentPin
+ *     responses:
+ *       200:
+ *         description: Payment for the project successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Project payment processed successfully"
+ *       400:
+ *         description: Bad request, invalid input
+ *       401:
+ *         description: Unauthorized, authentication token missing or invalid
+ *       500:
+ *         description: Server error while processing project payment
+ */
 router.post('/projectpay', processProjectPayment);
 
 module.exports = router;

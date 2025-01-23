@@ -1,17 +1,18 @@
-const User = require('../models/userModel'); 
+const User = require('../models/userModel');
 const Transaction = require('../models/transactionModel');
-const verifyPaymentPin = require('../utils/verifyPaymentPin'); 
+const verifyPaymentPin = require('../utils/verifyPaymentPin');
 const CircuitBreaker = require('opossum');
+const jwt = require('jsonwebtoken');
 
-// Define circuit breaker options
+// Circuit Breaker options
 const breakerOptions = {
-  timeout: 5000, 
-  errorThresholdPercentage: 50, 
-  resetTimeout: 30000, 
+  timeout: 5000,
+  errorThresholdPercentage: 50,
+  resetTimeout: 30000,
 };
 
 const paymentBreaker = new CircuitBreaker(async (req) => {
-  return await initiatePaymentLogic(req); 
+  return await initiatePaymentLogic(req);
 }, breakerOptions);
 
 paymentBreaker.fallback(() => {
@@ -29,23 +30,43 @@ async function processPaymentQueue() {
   if (isProcessingPayment || paymentRequestQueue.length === 0) return;
 
   isProcessingPayment = true;
-  const { req, res } = paymentRequestQueue.shift(); // Get the first request in the queue
+  const { req, res } = paymentRequestQueue.shift();
 
   try {
-    const result = await initiatePaymentLogic(req); // Process the payment logic
-    res.status(200).json(result); // Send the response
+    const result = await initiatePaymentLogic(req);
+    res.status(200).json(result);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: error.message || 'Server error' }); // Handle errors
+    res.status(500).json({ message: error.message || 'Server error' });
   } finally {
     isProcessingPayment = false;
-    processPaymentQueue(); // Process the next request in the queue
+    processPaymentQueue();
   }
 }
 
 // Payment Logic
 async function initiatePaymentLogic(req) {
   const { senderId, receiverId, amount, paymentPin } = req.body;
+
+  // Extract the logged-in user's ID from the JWT token
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) {
+    throw new Error('Authentication token is required.');
+  }
+
+  let decodedToken;
+  try {
+    decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    throw new Error('Invalid or expired token.');
+  }
+
+  const loggedInUserId = decodedToken.userId;
+
+  // Ensure the senderId matches the logged-in user's ID
+  if (senderId !== loggedInUserId) {
+    throw new Error('Unauthorized access. You can only initiate payments from your own account.');
+  }
 
   // Find sender and receiver users
   const sender = await User.findByPk(senderId);
@@ -57,7 +78,7 @@ async function initiatePaymentLogic(req) {
 
   // Check if the sender's account is locked
   if (sender.isLocked) {
-    throw new Error('Account is locked due to too many failed payment PIN attempts. Try again later after 30 minutes.');
+    throw new Error('Account is locked due to too many failed payment PIN attempts. Try again later.');
   }
 
   // Verify the sender's payment PIN
@@ -68,7 +89,7 @@ async function initiatePaymentLogic(req) {
 
   // Check if sender has sufficient balance
   if (sender.balance < amount) {
-    throw new Error('Insufficient funds');
+    throw new Error('Insufficient funds.');
   }
 
   // Deduct the amount from sender's balance and add it to receiver's balance
@@ -89,7 +110,7 @@ async function initiatePaymentLogic(req) {
   });
 
   return {
-    message: 'Payment successful',
+    message: 'Payment successful.',
     transaction,
     senderBalance: sender.balance,
     receiverBalance: receiver.balance,
@@ -98,8 +119,8 @@ async function initiatePaymentLogic(req) {
 
 // Handle payment requests
 async function initiatePayment(req, res) {
-  paymentRequestQueue.push({ req, res }); // Add the request to the queue
-  processPaymentQueue(); // Start processing the queue
+  paymentRequestQueue.push({ req, res });
+  processPaymentQueue();
 }
 
 // Generate a unique transaction ID

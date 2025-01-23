@@ -34,10 +34,10 @@ function enqueueUserRequest(handler) {
 // View user details excluding password
 async function viewUserDetailsHandler(req, res) {
   try {
-    const { userId } = req.user; // Get the logged-in user ID from the token
+    const { userId } = req.user; // Extract logged-in user ID from the token
 
     const user = await User.findByPk(userId, {
-      attributes: { exclude: ['password'] }, // Exclude password from the response
+      attributes: { exclude: ['password'] }, // Exclude the password field from the response
     });
 
     if (!user) {
@@ -62,8 +62,13 @@ async function viewUserDetailsHandler(req, res) {
 // Forget payment PIN
 async function forgetPinHandler(req, res) {
   try {
-    const { userId } = req.user; // Get the logged-in user ID from the token
-    const { password, newPin } = req.body; // Get current password and new PIN from the request body
+    const { userId } = req.user; // Extract logged-in user ID from the token
+    const { password, newPin } = req.body; // Extract password and new PIN from the request body
+
+    // Validate request data
+    if (!password || !newPin) {
+      return res.status(400).json({ message: 'Password and new PIN are required' });
+    }
 
     // Find the user
     const user = await User.findByPk(userId);

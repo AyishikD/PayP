@@ -201,6 +201,3 @@ router.post('/forget-pin', authMiddleware, forgetPin);
 router.get('/details', authMiddleware, viewUserDetails);
 
 module.exports = router;
-
-
-
