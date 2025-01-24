@@ -1,7 +1,7 @@
 # PayP: Payment Platform API
 
 This project is a payment architecture based on UPI architecture, designed to accept payments and send them. It includes core features such as secure user accounts, balance management, transaction logs, and a lockout mechanism for failed login attempts.It provides a great alternative to Razorpay or Stripe for development since it completely works like UPI.
-Here is the complete API Endpoint testing: [Postman Results](https://www.postman.com/mission-geologist-4118891/payp/collection/za1hjme/routes-payp). Complete tutorial on how to use it is on :[Article](https://medium.com/@ayishikad/payp-revolutionizing-payment-integration-with-custom-api-b63a6a329b97).
+Here is the complete API Endpoint testing: [Postman Results](https://www.postman.com/mission-geologist-4118891/payp/collection/za1hjme/routes-payp). Complete tutorial on how to use it is on :[Article](https://medium.com/@ayishikad/payp-revolutionizing-payment-integration-with-custom-api-b63a6a329b97). Swagger docs is here: [Swagger Link](https://payp.onrender.com/api-docs/)
 
 ## **Features**
 1. **User Management**: 
