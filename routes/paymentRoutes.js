@@ -147,7 +147,8 @@ router.get('/logs/:userId', authMiddleware, getTransactionLogs);
  *     security:
  *       - bearerAuth: []
  *     requestBody:
- *       required: true
+ *       description: Optional fields for project payment processing
+ *       required: false
  *       content:
  *         application/json:
  *           schema:
@@ -155,21 +156,17 @@ router.get('/logs/:userId', authMiddleware, getTransactionLogs);
  *             properties:
  *               projectId:
  *                 type: integer
- *                 description: ID of the project for which payment is being made.
+ *                 description: ID of the project (optional for mock processing).
  *               amount:
  *                 type: number
  *                 format: float
- *                 description: Payment amount for the project.
+ *                 description: Payment amount for the project (optional for mock processing).
  *               paymentPin:
  *                 type: string
- *                 description: Payment PIN of the sender.
- *             required:
- *               - projectId
- *               - amount
- *               - paymentPin
+ *                 description: Payment PIN of the sender (optional for mock processing).
  *     responses:
  *       200:
- *         description: Payment for the project successful
+ *         description: Payment processed successfully
  *         content:
  *           application/json:
  *             schema:
@@ -177,13 +174,31 @@ router.get('/logs/:userId', authMiddleware, getTransactionLogs);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: "Project payment processed successfully"
+ *                   example: "Payment successful!"
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 transactionId:
+ *                   type: string
+ *                   example: "TXN123456789"
  *       400:
- *         description: Bad request, invalid input
- *       401:
- *         description: Unauthorized, authentication token missing or invalid
+ *         description: Payment failed due to wrong credentials or network lag
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Payment failed due to wrong credentials or network lag."
+ *                 status:
+ *                   type: string
+ *                   example: "failed"
+ *                 transactionId:
+ *                   type: string
+ *                   example: "TXN123456789"
  *       500:
- *         description: Server error while processing project payment
+ *         description: Server error while processing payment
  */
 router.post('/projectpay', processProjectPayment);
 
