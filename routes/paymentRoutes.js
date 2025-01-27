@@ -2,6 +2,8 @@ const express = require('express');
 const { initiatePayment } = require('../controllers/paymentController');
 const { getTransactionLogs } = require('../controllers/transactionController');
 const { processProjectPayment } = require('../controllers/projectController');
+const { addProduct } = require('../controllers/productController');
+const { payForProduct } = require('../controllers/propayController');
 const authMiddleware = require('../middleware/authMiddleware');
 const router = express.Router();
 
@@ -201,5 +203,6 @@ router.get('/logs/:userId', authMiddleware, getTransactionLogs);
  *         description: Server error while processing payment
  */
 router.post('/projectpay', processProjectPayment);
-
+router.post('/add', authMiddleware, addProduct);
+router.post('/pay/:uuid', payForProduct);
 module.exports = router;
