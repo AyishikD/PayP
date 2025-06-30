@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const sequelize = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const autopayRoutes = require('./routes/autopayRoutes');
 const { logger } = require('./utils/logger');
 const healthCheck = require('./routes/healthCheck');
 const errorHandler = require('./middleware/errorHandler');
@@ -61,6 +62,7 @@ app.use((req, res, next) => {
 app.use('/api', healthCheck);
 app.use('/api/auth', authRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/mandate', autopayRoutes);
 
 // Swagger API Docs route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
