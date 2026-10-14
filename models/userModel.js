@@ -27,7 +27,7 @@ User.init(
       },
     },
     balance: {
-      type: DataTypes.FLOAT,
+      type: DataTypes.DECIMAL(14, 2),
       allowNull: false,
       defaultValue: 100000.0, 
       validate: {
@@ -42,12 +42,10 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    // bcrypt hash of the 5-digit PIN; the PIN format is validated before hashing.
     paymentPin: {
       type: DataTypes.STRING,
       allowNull: false,
-      validate: {
-        len: [5, 5], 
-      },
     },
     failedPinAttempts: {
       type: DataTypes.INTEGER,

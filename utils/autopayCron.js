@@ -1,77 +1,114 @@
 const cron = require('node-cron');
+const { Op } = require('sequelize');
+const sequelize = require('../config/db');
 const Mandate = require('../models/mandateModel');
-const MandateEvent  = require('../models/mandateEventModel');
-const User = require('../models/userModel');
-const { v4: uuidv4 } = require('uuid');
-const Transaction = require('../models/transactionModel');
+const MandateEvent = require('../models/mandateEventModel');
+const AppError = require('./AppError');
+const { transferFunds } = require('./transfer');
+const { nextDueDate, endOfDay } = require('./schedule');
+const { logger } = require('./logger');
 
-cron.schedule('* * * * *', async () => {
-  const now = new Date();
+let isRunning = false;
 
-  const activeMandates = await Mandate.findAll({ where: { status: 'active' } });
-
-  for (const mandate of activeMandates) {
-    const lastDate = new Date(mandate.nextPaymentDate || mandate.startDate);
-
-    // Check if mandate has started
-    if (lastDate > now || now > new Date(mandate.endDate)) continue;
-
-    // Check if it's time to process based on frequency
-    const diffMs = now - lastDate;
-
-    const frequencyMap = {
-      '2min': 2 * 60 * 1000,
-      '10min': 10 * 60 * 1000,
-      'daily': 24 * 60 * 60 * 1000,
-      'weekly': 7 * 24 * 60 * 60 * 1000,
-      'monthly': 30 * 24 * 60 * 60 * 1000, 
-      'yearly': 365 * 24 * 60 * 60 * 1000,
-    };
-
-    const interval = frequencyMap[mandate.frequency] || frequencyMap['monthly'];
-    if (diffMs < interval) continue;
-
-    // Fetch users
-    const sender = await User.findByPk(mandate.senderId);
-    const receiver = await User.findByPk(mandate.receiverId);
-    if (!sender || !receiver) continue;
-
-    if (sender.balance >= mandate.amount) {
-      sender.balance -= mandate.amount;
-      receiver.balance += mandate.amount;
-      await sender.save();
-      await receiver.save();
-
-      await Transaction.create({
-        transactionId: uuidv4(),
-        senderId: sender.id,
-        receiverId: receiver.id,
-        amount: mandate.amount,
-        status: 'success',
-      });
-
-      await MandateEvent.create({
-        mandateId: mandate.id,
-        eventType: 'payment_success',
-        message: `₹${mandate.amount} paid successfully.`,
-        amountDebited: amount,
-      });
-    } else {
-      await MandateEvent.create({
-        mandateId: mandate.id,
-        eventType: 'failed_payment',
-        message: 'Insufficient balance for mandate payment.',
-      });
+// Debits one mandate if it is still due. Row locking with SKIP LOCKED means two server
+// instances (or an overlapping run) never debit the same mandate twice.
+async function processMandate(mandateId, now) {
+  await sequelize.transaction(async (t) => {
+    const mandate = await Mandate.findByPk(mandateId, {
+      lock: t.LOCK.UPDATE,
+      skipLocked: true,
+      transaction: t,
+    });
+    if (!mandate || mandate.status !== 'active' || !mandate.nextPaymentDate || mandate.nextPaymentDate > now) {
+      return;
     }
 
-    // Update nextPaymentDate
-    mandate.nextPaymentDate = new Date(lastDate.getTime() + interval);
-    await mandate.save();
+    if (mandate.endDate && now > endOfDay(mandate.endDate)) {
+      mandate.status = 'expired';
+      await mandate.save({ transaction: t });
+      await MandateEvent.create(
+        { mandateId, eventType: 'expired', message: 'Mandate reached its end date.', status: 'meta', executedAt: now },
+        { transaction: t }
+      );
+      return;
+    }
 
-    await MandateEvent.create({
-      mandateId: mandate.id,
-      eventType: 'next_trigger',
-      message: `Next payment scheduled for ${mandate.nextPaymentDate.toISOString()}`,
+    const amount = Number(mandate.amountMax);
+    let event;
+    try {
+      // A savepoint, so a failed transfer rolls back only itself and the mandate still advances.
+      const { transaction } = await sequelize.transaction({ transaction: t }, (savepoint) =>
+        transferFunds({ senderId: mandate.senderId, receiverId: mandate.receiverId, amount }, savepoint)
+      );
+      event = {
+        eventType: 'payment_success',
+        status: 'success',
+        amountDebited: amount,
+        transactionId: transaction.transactionId,
+        message: `₹${amount} paid successfully.`,
+      };
+    } catch (error) {
+      if (!(error instanceof AppError)) throw error;
+      event = {
+        eventType: 'payment_failed',
+        status: 'failed',
+        amountDebited: 0,
+        failureReason: error.message,
+        message: 'Mandate payment failed.',
+      };
+    }
+
+    // Skip any slots missed while the server was down instead of charging for each one.
+    let next = nextDueDate(mandate.nextPaymentDate, mandate.frequency);
+    while (next <= now) {
+      next = nextDueDate(next, mandate.frequency);
+    }
+    mandate.nextPaymentDate = next;
+    await mandate.save({ transaction: t });
+
+    await MandateEvent.create(
+      {
+        mandateId,
+        ...event,
+        message: `${event.message} Next payment scheduled for ${next.toISOString()}.`,
+        executedAt: now,
+      },
+      { transaction: t }
+    );
+  });
+}
+
+async function processDueMandates() {
+  if (isRunning) return;
+  isRunning = true;
+
+  try {
+    const now = new Date();
+    const dueMandates = await Mandate.findAll({
+      attributes: ['id'],
+      where: {
+        status: 'active',
+        frequency: { [Op.ne]: 'asNeeded' },
+        nextPaymentDate: { [Op.lte]: now },
+      },
     });
+
+    for (const { id } of dueMandates) {
+      try {
+        await processMandate(id, now);
+      } catch (error) {
+        logger.error(`Autopay failed for mandate ${id}: ${error.stack || error.message}`);
+      }
+    }
+  } catch (error) {
+    logger.error(`Autopay run failed: ${error.stack || error.message}`);
+  } finally {
+    isRunning = false;
   }
-});
+}
+
+function startAutopayCron() {
+  return cron.schedule('* * * * *', processDueMandates);
+}
+
+module.exports = { startAutopayCron, processDueMandates };

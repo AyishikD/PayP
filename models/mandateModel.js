@@ -27,7 +27,7 @@ Mandate.init(
     },
 
     amountMax: {
-      type: DataTypes.FLOAT,
+      type: DataTypes.DECIMAL(14, 2),
       allowNull: false,
       validate: {
         min: 1,
@@ -49,8 +49,9 @@ Mandate.init(
       allowNull: true,
     },
 
+    // When the next autopay debit is due. A timestamp, so short frequencies like '2min' work.
     nextPaymentDate: {
-      type: DataTypes.DATEONLY,
+      type: DataTypes.DATE,
       allowNull: true,
     },
 

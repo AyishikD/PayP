@@ -16,7 +16,7 @@ Product.init(
       allowNull: false,
     },
     price: {
-      type: DataTypes.FLOAT,
+      type: DataTypes.DECIMAL(14, 2),
       allowNull: false,
     },
     uuid: {

@@ -25,6 +25,8 @@ const sequelize = require('../config/db'); // Import the sequelize instance
  *                 timestamp:
  *                   type: string
  *                   example: "2025-01-19T00:00:00Z"
+ *       503:
+ *         description: Application is up but the database is unreachable
  *       500:
  *         description: Health check failed due to an error (database connection issue, etc.)
  *         content:
@@ -44,8 +46,8 @@ const sequelize = require('../config/db'); // Import the sequelize instance
 router.get('/health', async (req, res) => {
   try {
     const dbStatus = await checkDatabaseConnection(); // Check database connection
-    res.status(200).json({
-      status: 'UP',
+    res.status(dbStatus ? 200 : 503).json({
+      status: dbStatus ? 'UP' : 'DEGRADED',
       database: dbStatus ? 'Connected' : 'Disconnected',
       timestamp: new Date().toISOString(), // Return timestamp in ISO format
     });

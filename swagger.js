@@ -5,7 +5,7 @@ const swaggerOptions = {
     openapi: '3.0.0',
     info: {
       title: 'PayP',
-      version: '3.0.0',
+      version: '6.0.0',
       description: 'API documentation for the PayP Platform',
       contact: {
         name: 'Ayishik Das',

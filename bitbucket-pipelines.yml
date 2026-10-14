@@ -1,13 +1,12 @@
-image: node:16
+image: node:20
 
 pipelines:
   default:
     - step:
-        name: Install and Deploy
+        name: Lint and test
         caches:
           - node
         script:
-          - echo "Installing dependencies..."
           - npm install
-          - echo "Starting the server..."
-          - node server.js
+          - npm run lint
+          - npm test

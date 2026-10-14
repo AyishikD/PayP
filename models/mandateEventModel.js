@@ -21,18 +21,31 @@ MandateEvent.init(
       onDelete: 'CASCADE',
     },
 
+    eventType: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+
+    message: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+
+    // The transaction created by this event, if any.
     transactionId: {
       type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+      allowNull: true,
     },
 
     amountDebited: {
-      type: DataTypes.FLOAT,
+      type: DataTypes.DECIMAL(14, 2),
       allowNull: false,
+      defaultValue: 0,
     },
 
+    // 'meta' marks lifecycle events (created, paused, ...) that move no money.
     status: {
-      type: DataTypes.ENUM('success', 'failed', 'skipped'),
+      type: DataTypes.ENUM('success', 'failed', 'skipped', 'meta'),
       defaultValue: 'success',
     },
 

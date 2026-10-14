@@ -1,16 +1,19 @@
-FROM node:bookworm
+FROM node:20-bookworm-slim
+
+ENV NODE_ENV=production
 
 # Set the working directory
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
+# Install dependencies first so they are cached between code changes
+COPY package.json ./
+RUN npm install --omit=dev
+
+# Copy the application code
 COPY . /app
 
-# Install any needed packages specified in package.json
-RUN npm install
+# Default port; override with the PORT environment variable
+EXPOSE 3000
 
-# Make port 3000 available to the world outside this container
-EXPOSE $PORT
-
-# Run app.js when the container launches
-CMD ["node", "server.js"]
+# Runs database migrations, then starts the server
+CMD ["npm", "start"]

@@ -19,21 +19,20 @@ const router = express.Router();
  *     PaymentRequest:
  *       type: object
  *       required:
- *         - senderId
  *         - receiverId
  *         - amount
  *         - paymentPin
  *       properties:
  *         senderId:
  *           type: integer
- *           description: ID of the sender user.
+ *           description: Optional. If sent, must be the logged-in user's ID.
  *         receiverId:
  *           type: integer
  *           description: ID of the receiver user.
  *         amount:
  *           type: number
  *           format: float
- *           description: Payment amount.
+ *           description: Payment amount, greater than 0 with at most 2 decimal places.
  *         paymentPin:
  *           type: string
  *           description: Payment PIN of the sender.
@@ -119,7 +118,7 @@ router.post('/initiate', authMiddleware, initiatePayment);
  *         schema:
  *           type: integer
  *         required: true
- *         description: User ID to fetch transaction logs.
+ *         description: User ID to fetch transaction logs. Must be the logged-in user.
  *     responses:
  *       200:
  *         description: Transaction logs retrieved successfully
@@ -133,6 +132,8 @@ router.post('/initiate', authMiddleware, initiatePayment);
  *         description: Invalid user ID format
  *       401:
  *         description: Unauthorized, authentication token missing or invalid
+ *       403:
+ *         description: Requested another user's transactions
  *       404:
  *         description: No transactions found for the user
  *       500:
@@ -219,8 +220,8 @@ router.post('/projectpay', processProjectPayment);
  *             type: object
  *             properties:
  *               id:
- *                 type: string
- *                 description: Product ID.
+ *                 type: integer
+ *                 description: Optional. ID of one of your products to update; omit to create a new product.
  *               price:
  *                 type: number
  *                 format: float
@@ -277,16 +278,12 @@ router.post('/add', authMiddleware, addProduct);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - paymentPin
  *             properties:
- *               senderId:
- *                 type: integer
- *                 description: ID of the sender user.
- *               password:
- *                 type: string
- *                 description: Password of the sender.
  *               paymentPin:
  *                 type: string
- *                 description: Payment PIN of the sender.
+ *                 description: Payment PIN of the logged-in user, who pays for the product.
  *     responses:
  *       200:
  *         description: Payment successful
@@ -329,5 +326,5 @@ router.post('/add', authMiddleware, addProduct);
  *       500:
  *         description: Server error while processing payment
  */
-router.post('/pay/:uuid', payForProduct);
+router.post('/pay/:uuid', authMiddleware, payForProduct);
 module.exports = router;

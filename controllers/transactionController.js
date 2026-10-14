@@ -1,80 +1,47 @@
 const { Op } = require('sequelize');
 const Transaction = require('../models/transactionModel');
+const AppError = require('../utils/AppError');
 
-// In-memory queue
-const transactionLogsQueue = [];
-let isProcessingTransactionLogs = false;
+const MAX_PAGE_SIZE = 100;
 
-// Helper function to process the transaction logs queue
-async function processTransactionLogsQueue() {
-  if (isProcessingTransactionLogs || transactionLogsQueue.length === 0) return;
+// Fetch the logged-in user's transaction logs
+async function getTransactionLogs(req, res) {
+  const userId = Number(req.params.userId);
 
-  isProcessingTransactionLogs = true;
-  const { req, res, next } = transactionLogsQueue.shift(); // Get the first request in the queue
-
-  try {
-    const userId = parseInt(req.params.userId, 10);
-
-    if (isNaN(userId)) {
-      return res.status(400).json({ message: 'Invalid user ID format.' });
-    }
-
-    // Extract pagination parameters
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const offset = (page - 1) * limit;
-
-    // Fetch total transaction count for the user
-    const totalTransactions = await Transaction.count({
-      where: {
-        [Op.or]: [{ senderId: userId }, { receiverId: userId }],
-      },
-    });
-
-    // Fetch transactions with pagination
-    const transactions = await Transaction.findAll({
-      where: {
-        [Op.or]: [{ senderId: userId }, { receiverId: userId }],
-      },
-      order: [['createdAt', 'DESC']],
-      limit,
-      offset,
-    });
-
-    if (!transactions.length) {
-      return res.status(404).json({ message: 'No transactions found for this user.' });
-    }
-
-    // Calculate total pages
-    const totalPages = Math.ceil(totalTransactions / limit);
-
-    res.status(200).json({
-      transactions,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalTransactions,
-        limit,
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching transactions:', error);
-
-    // Use Express v5's `next` to propagate unexpected errors
-    next(error);
-  } finally {
-    isProcessingTransactionLogs = false;
-    processTransactionLogsQueue(); // Process the next request in the queue
+  if (!Number.isInteger(userId)) {
+    throw new AppError(400, 'Invalid user ID format.');
   }
-}
+  if (userId !== req.user.userId) {
+    throw new AppError(403, 'You can only view your own transactions.');
+  }
 
-// Fetch transaction logs
-async function getTransactionLogs(req, res, next) {
-  // Add the request to the queue
-  transactionLogsQueue.push({ req, res, next });
+  // Extract pagination parameters
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), MAX_PAGE_SIZE);
+  const offset = (page - 1) * limit;
 
-  // Process the queue if not already processing
-  processTransactionLogsQueue();
+  const { count: totalTransactions, rows: transactions } = await Transaction.findAndCountAll({
+    where: {
+      [Op.or]: [{ senderId: userId }, { receiverId: userId }],
+    },
+    order: [['createdAt', 'DESC']],
+    limit,
+    offset,
+  });
+
+  if (!transactions.length) {
+    return res.status(404).json({ message: 'No transactions found for this user.' });
+  }
+
+  res.status(200).json({
+    transactions,
+    pagination: {
+      currentPage: page,
+      totalPages: Math.ceil(totalTransactions / limit),
+      totalTransactions,
+      limit,
+    },
+  });
 }
 
 module.exports = {

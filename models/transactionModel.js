@@ -32,7 +32,7 @@ Transaction.init(
       },
     },
     amount: {
-      type: DataTypes.FLOAT,
+      type: DataTypes.DECIMAL(14, 2),
       allowNull: false,
     },
     status: {

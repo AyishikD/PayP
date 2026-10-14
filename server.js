@@ -1,36 +1,42 @@
+require('dotenv').config();
 const express = require('express');
-const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const swaggerUi = require('swagger-ui-express');
 const sequelize = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const autopayRoutes = require('./routes/autopayRoutes');
-const { logger } = require('./utils/logger');
 const healthCheck = require('./routes/healthCheck');
 const errorHandler = require('./middleware/errorHandler');
-const rateLimit = require('express-rate-limit');
-const swaggerUi = require('swagger-ui-express');
 const swaggerDocs = require('./swagger');
+const { logger } = require('./utils/logger');
+const { startAutopayCron } = require('./utils/autopayCron');
+
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET is not set.');
+}
 
 const app = express();
-const port = 3000;
+const port = Number(process.env.PORT) || 3000;
+
+// Number of reverse proxies in front of the app (e.g. 1 on Render), so rate limiting sees real client IPs.
+app.set('trust proxy', Number(process.env.TRUST_PROXY) || 0);
 
 // Set up rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // Allow each IP 50 requests per 15 minutes
-  message: 'Too many requests from this IP, please try again later.',
-  headers: true,
+  limit: Number(process.env.RATE_LIMIT_MAX) || 300,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { message: 'Too many requests from this IP, please try again later.' },
 });
 
 // Apply rate limiting globally
 app.use(limiter);
 
 // Set security headers with Helmet
-app.use(helmet());
-
-// Customize Helmet (optional tweaks)
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -75,24 +81,49 @@ app.get('/', (req, res) => {
 // Global error handler
 app.use(errorHandler);
 
-const server = http.createServer(app);
-// Graceful Shutdown
-process.on('SIGINT', () => {
-  console.log('Shutting down gracefully...');
-  server.close(() => {
-    console.log('Server has been shut down.'); 
-    process.exit(0);  // Exit the process
-  });
-});
+// Test the database connection, retrying with exponential backoff
+async function connectWithRetry(retries = 10, initialDelay = 1000) {
+  let delay = initialDelay;
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    try {
+      await sequelize.authenticate();
+      logger.info('Database connected successfully.');
+      return;
+    } catch (error) {
+      logger.error(`Connection attempt ${attempt}/${retries} failed: ${error.message}`);
+      if (attempt === retries) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      delay *= 2;
+    }
+  }
+}
 
-// Sync database and start the server
-sequelize.sync()
-  .then(() => {
-    app.listen(port, () => {
-      logger.info(`Server is running on port ${port}`);
-    });
-  })
-  .catch((error) => {
-    console.error('Error syncing database:', error);
-    logger.error('Error syncing database:', error.message);
+async function start() {
+  await connectWithRetry();
+  // Creates tables on a fresh database; changes to existing tables are made by migrations (npm run migrate).
+  await sequelize.sync();
+
+  const autopayTask = startAutopayCron();
+  const server = app.listen(port, () => {
+    logger.info(`Server is running on port ${port}`);
   });
+
+  // Graceful Shutdown
+  const shutdown = (signal) => {
+    logger.info(`${signal} received, shutting down gracefully...`);
+    autopayTask.stop();
+    server.close(async () => {
+      await sequelize.close();
+      logger.info('Server has been shut down.');
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10000).unref();
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+}
+
+start().catch((error) => {
+  logger.error(`Failed to start server: ${error.stack || error.message}`);
+  process.exit(1);
+});

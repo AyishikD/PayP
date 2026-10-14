@@ -37,25 +37,44 @@ npm install
 ```
 
 ### **3. Set up environment variables**
-Create a `.env` file in the project root and configure the following:
+Copy `.env.example` to `.env` and configure at least:
 ```env
 DB_URL=your_postgresql_database_url
 JWT_SECRET=your_jwt_secret
 ```
+Optional settings (see `.env.example`): `PORT`, `JWT_EXPIRES_IN` (default `1h`), `TRUST_PROXY` (set to `1` on Render), `RATE_LIMIT_MAX`, `AUTH_RATE_LIMIT_MAX`, `DB_SSL`, `DB_SSL_REJECT_UNAUTHORIZED`.
 
 ### **4. Run the project**
-#### **Development**
 ```bash
-npm start
+npm start        # runs database migrations, then starts the server
+npm run dev      # starts the server with nodemon (run `npm run migrate` first)
 ```
-#### **Production**
+
+### **5. Lint and test**
 ```bash
-node server.js
+npm run lint
+npm test
 ```
 
 ---
 
 ## **Changelog**
+### **v6.0.0 (October 2026)**
+- **Security fixes**:
+  - Payment, product and mandate amounts are validated: negative, zero, non-numeric and over-precise amounts are rejected.
+  - Money is stored as `DECIMAL(14,2)` and every balance change runs in a database transaction with row locks.
+  - Payment PINs are stored as bcrypt hashes (existing PINs are hashed by the migration).
+  - Users can only view their own transaction logs and only manage their own mandates.
+  - JWTs expire (default 1 hour); tokens issued by earlier versions are no longer accepted.
+  - Login no longer reveals whether an email is registered, and login/register have a stricter rate limit.
+- **AutoPay**: the scheduler now runs, debits mandates on their start date and then at each interval, records failed payments, skips missed cycles instead of charging for each, and expires mandates after their end date. Mandates can be paused, resumed and cancelled.
+- **Breaking changes**:
+  - `POST /auth/forget-password` now changes the logged-in user's password and requires `currentPassword` and `newPassword`.
+  - `POST /auth/forget-pin` requires `password` and `newPin` (as documented in Swagger).
+  - `POST /payment/pay/{uuid}` requires a bearer token and `paymentPin`; the payer is the logged-in user.
+  - Error responses use a `message` field. Locked accounts return `403`; invalid tokens return `401`.
+  - Mandate `amount` is required to be a positive number; `startDate` cannot be in the past; `expired` can no longer be set by users.
+
 ### **v5.0.0 (January 2025)**
 - **New Features**:
   - **Transaction Logs**: Added route to retrieve transaction logs for users (`/payment/logs/{userId}`).
@@ -84,7 +103,9 @@ node server.js
 - **JWT**: Secure user authentication.
 
 ### **Scripts**
-- `node server.js`: Starts the server.
+- `npm start`: Runs migrations and starts the server.
+- `npm run migrate`: Runs database migrations.
+- `npm run lint` / `npm test`: Lint and unit tests.
 
 ---
 

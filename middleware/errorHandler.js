@@ -1,11 +1,19 @@
-// Error handling middleware
-function errorHandler(err, req, res, next) {
-  // Log the error message to the console
-  console.error(`Error occurred: ${err.message}`);
+const { logger } = require('../utils/logger');
 
-  // Send the response with status code and error message
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error',
+// Error handling middleware. Client errors keep their message; server errors are logged and hidden.
+function errorHandler(err, req, res, next) {
+  const status = err.status || err.statusCode || 500;
+
+  if (status >= 500) {
+    logger.error(`${req.method} ${req.originalUrl} failed: ${err.stack || err.message}`);
+  }
+
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  res.status(status).json({
+    message: status >= 500 ? 'Internal Server Error' : err.message,
   });
 }
 

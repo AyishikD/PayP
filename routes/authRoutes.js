@@ -3,7 +3,17 @@ const { registerUser, loginUser } = require('../controllers/authController');
 const { viewUserDetails, forgetPin } = require('../controllers/userController');
 const { forgetPassword } = require('../controllers/passwordController');
 const authMiddleware = require('../middleware/authMiddleware');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
+
+// Stricter limit for credential endpoints to slow down password guessing
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.AUTH_RATE_LIMIT_MAX) || 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { message: 'Too many attempts, please try again later.' },
+});
 
 /**
  * @swagger
@@ -42,7 +52,7 @@ const router = express.Router();
  *           description: Indicates if the user's account is locked.
  *         paymentPin:
  *           type: string
- *           description: A 5-character PIN for secure payment transactions.
+ *           description: A 5-digit PIN for secure payment transactions (stored hashed).
  *         failedPinAttempts:
  *           type: integer
  *           description: Number of consecutive failed PIN attempts.
@@ -84,15 +94,18 @@ const router = express.Router();
  *               - paymentPin
  *     responses:
  *       201:
- *         description: User registered successfully
+ *         description: User registered successfully; returns a JWT
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/User'
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
  *       400:
  *         description: Bad request, validation errors
  */
-router.post('/register', registerUser);
+router.post('/register', authLimiter, registerUser);
 
 /**
  * @swagger
@@ -119,16 +132,18 @@ router.post('/register', registerUser);
  *     responses:
  *       200:
  *         description: Login successful
- *       401:
- *         description: Unauthorized, invalid credentials
+ *       400:
+ *         description: Invalid credentials
+ *       403:
+ *         description: Account locked after too many failed attempts
  */
-router.post('/login', loginUser);
+router.post('/login', authLimiter, loginUser);
 
 /**
  * @swagger
  * /auth/forget-password:
  *   post:
- *     summary: Request password reset
+ *     summary: Change the logged-in user's password
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
@@ -139,14 +154,20 @@ router.post('/login', loginUser);
  *           schema:
  *             type: object
  *             properties:
- *               email:
+ *               currentPassword:
  *                 type: string
- *                 description: Registered email address of the user.
+ *                 description: The user's current password.
+ *               newPassword:
+ *                 type: string
+ *                 description: New password (at least 6 characters, including a number).
  *             required:
- *               - email
+ *               - currentPassword
+ *               - newPassword
  *     responses:
  *       200:
- *         description: Password reset link sent
+ *         description: Password reset successfully
+ *       400:
+ *         description: Invalid current password or new password
  *       401:
  *         description: Unauthorized, user not authenticated
  */
@@ -167,14 +188,18 @@ router.post('/forget-password', authMiddleware, forgetPassword);
  *           schema:
  *             type: object
  *             properties:
- *               email:
+ *               password:
  *                 type: string
- *                 description: Registered email address of the user.
+ *                 description: The user's current password.
+ *               newPin:
+ *                 type: string
+ *                 description: New 5-digit payment PIN.
  *             required:
- *               - email
+ *               - password
+ *               - newPin
  *     responses:
  *       200:
- *         description: PIN reset request successful
+ *         description: PIN reset successful
  *       401:
  *         description: Unauthorized, user not authenticated
  */
